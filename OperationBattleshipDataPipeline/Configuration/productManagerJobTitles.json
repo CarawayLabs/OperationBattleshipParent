@@ -1,0 +1,104 @@
+{
+    "Roles": [
+        {
+            "title": "AI ML Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Product Manager AI",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI Product Manager AI ML",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI/ML Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Product Manager, ai ml",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Growth Product Manager",
+            "description": "Specializes in driving user growth and engagement through product strategy and development."
+        },
+        {
+            "title": "Product Manager",
+            "description": "Often a generalist role, involves overseeing the development and success of a product from ideation to launch."
+        },
+        {
+            "title": "Technical Product Manager",
+            "description": "Focuses on the technical aspects of product development, often requiring a background in engineering or computer science."
+        },
+        {
+            "title": "Senior Product Manager",
+            "description": "A more experienced PM role, responsible for managing larger or more complex products and possibly leading a team of PMs."
+        },
+        {
+            "title": "Product Owner",
+            "description": "Common in Agile frameworks, responsible for defining the vision of the product and managing the product backlog."
+        },
+        {
+            "title": "Associate Product Manager",
+            "description": "An entry-level PM role, typically involves supporting senior PMs in various aspects of product development."
+        },
+        {
+            "title": "Director of Product Management",
+            "description": "A leadership role overseeing the entire product management function within an organization."
+        },
+        {
+            "title": "VP of Product Management",
+            "description": "Senior executive role, responsible for the strategic direction and success of all product-related activities in a company."
+        },
+        {
+            "title": "Product Marketing Manager",
+            "description": "Focuses on marketing the product, including messaging, branding, and go-to-market strategy."
+        },
+        {
+            "title": "Chief Product Officer (CPO)",
+            "description": "Top-level executive role responsible for the overall product strategy and direction in an organization."
+        },
+        {
+            "title": "Digital Product Manager",
+            "description": "Specializes in digital products such as websites, mobile apps, and software applications."
+        },
+        {
+            "title": "Product Strategy Manager",
+            "description": "Focuses on long-term strategy and planning for the product's direction and growth."
+        },
+        {
+            "title": "User Experience Product Manager",
+            "description": "Concentrates on the user experience aspect of product design and development."
+        },
+        {
+            "title": "Data Product Manager",
+            "description": "Manages products that are heavily data-driven or data-related, requiring a good understanding of data analysis."
+        },
+        {
+            "title": "E-commerce Product Manager",
+            "description": "Specializes in products sold through online platforms, focusing on online sales strategies and customer experience."
+        },
+        {
+            "title": "Product Operations Manager",
+            "description": "Ensures smooth operation of the product team, focusing on process optimization and resource allocation."
+        },
+        {
+            "title": "Product Analytics Manager",
+            "description": "Focuses on leveraging data and analytics to inform product decisions and improvements."
+        },
+        {
+            "title": "International Product Manager",
+            "description": "Manages products targeted for international markets, requiring knowledge of global trends and multi-cultural considerations."
+        },
+        {
+            "title": "Platform Product Manager",
+            "description": "Manages a platform (like an API or ecosystem of products/services), focusing on its scalability and the value it provides to users and developers."
+        }
+    ]
+}

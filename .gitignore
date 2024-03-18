@@ -1,0 +1,17 @@
+# Ignore environment files
+.env
+
+# Ignore files that begin with 'scratch'
+scratch.*
+
+# Ignore log files
+*.log
+
+# Ignore all files in OperationBattleshipDataPipeline/RawCollections, but keep the directory
+OperationBattleshipDataPipeline/RawCollections/*
+!OperationBattleshipDataPipeline/RawCollections/.gitkeep
+
+# Ignore all files in OperationBattleshipDataPipeline/ProcessedCollections, but keep the directory
+OperationBattleshipDataPipeline/ProcessedCollections/*
+!OperationBattleshipDataPipeline/ProcessedCollections/.gitkeep
+

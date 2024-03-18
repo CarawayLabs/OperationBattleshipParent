@@ -1,0 +1,36 @@
+{
+    "Roles": [
+        {
+            "title": "AI ML Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Product Manager AI",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI Product Manager AI ML",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "AI/ML Product Manager",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Product Manager, ai ml",
+            "description": "Focuses on developing products powered by artificial intelligence. Requires knowledge of AI and machine learning technologies."
+        },
+        {
+            "title": "Product Manager",
+            "description": "Often a generalist role, involves overseeing the development and success of a product from ideation to launch."
+        },
+        {
+            "title": "Senior Product Manager",
+            "description": "A more experienced PM role, responsible for managing larger or more complex products and possibly leading a team of PMs."
+        }
+    ]
+}
