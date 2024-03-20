@@ -1,4 +1,4 @@
-# Basic Flow for Processing a Resume
+# Basic Flow for Processing a Resume - Upload via email. 
 
 A user will send their resume to findmynextjob@carawaylabs.com
 

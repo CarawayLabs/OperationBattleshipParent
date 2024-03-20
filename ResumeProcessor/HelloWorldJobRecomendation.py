@@ -1,5 +1,5 @@
 """
-In order to get up and running with the most basic recomendation system, we are going to write the simplest approach first. We shall prove that the basic flow our our system works and then begin applying more interesting capabilities and a more thoughtful algorothm for the recomendation. 
+In order to get up and running with the most basic recomendation system, we are going to write the simplest approach first. We shall prove that the basic flow for our our system works and then begin applying more interesting capabilities and a more thoughtful algorothm for the recomendation in future scripts. 
 
 Intended steps for the Hello World:
 - Process a PDF File
@@ -36,11 +36,30 @@ if parent_directory not in sys.path:
 
 from CommonUtilities.NomicAICaller import NomicAICaller
 from CommonUtilities.PineConeDatabaseCaller import PineConeDatabaseCaller
+from CommonUtilities.JobPostingDao import JobPostingDao
 
 
 load_dotenv('.env')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def convertPineconeResultsToDataframe(listOfNeightbors):
+
+    data = []
+    for match in listOfNeightbors['matches']:
+        entry = {
+            'job_id': match['id'],
+            'job_category': match['metadata']['job_category'],
+            'job_posting_date': match['metadata']['job_posting_date'],
+            'score': match['score']
+        }
+        data.append(entry)
+
+    # Creating the dataframe
+    df = pd.DataFrame(data)
+
+    return df
+
 
 def convertToEmbedding(resume):
     """
@@ -52,23 +71,50 @@ def convertToEmbedding(resume):
     return embeddedResume
 
 
-def getTopNearestJobPostings(embeddedResume, numberOfNeighbors, indexName, namsSpace):
+def getTopNearestNeighborsInNamespace(embeddedResume, numberOfNeighbors, indexName, namsSpace):
 
     #Create an instance of PineConeDatabaseCaller and then search for 25 KNN of the input vector
     pineconeApiKey = os.getenv("PINECONE_API_KEY")
     pineConeDatabaseCaller = PineConeDatabaseCaller(pineconeApiKey)
-    nearestJobPostings = pineConeDatabaseCaller.query(embeddedResume, numberOfNeighbors, indexName, namsSpace)
+    nearestJobPostings = pineConeDatabaseCaller.query(embeddedResume[0], numberOfNeighbors, indexName, namsSpace)
 
     return nearestJobPostings
 
+
 def getJobPostingDataForNearestNeighbors(listOfNeightbors):
 
-    logging.info(f"Datatype of the listOfNeightbors variable is: {type(listOfNeightbors)}")
-    print(listOfNeightbors)
+    logging.debug(f"Datatype of the listOfNeightbors variable is: {type(listOfNeightbors)}")
+    #print(listOfNeightbors)
 
-    return
+    pineconeResultsAsDataframe = convertPineconeResultsToDataframe(listOfNeightbors)
 
-def printResultsToOutputFile(recomendedJobs):
+    jobPostingDao = JobPostingDao()
+    jobs = jobPostingDao.getjobsFromListOfJobsIds(pineconeResultsAsDataframe)
+    
+    return jobs
+
+
+def printResultsToOutputFile(recommendedJobs):
+    """
+    Persists the Pandas Dataframe of recomended jobs to a csv file on disk. 
+
+    Args:
+        recommendedJobs: Dataframe of jobs
+
+    Return Value: 
+        none
+
+    """
+    if not isinstance(recommendedJobs, pd.DataFrame):
+        raise ValueError("The recommendedJobs argument must be a pandas DataFrame.")
+
+    # Define the path and name of the file where you want to save the DataFrame
+    output_file_path = 'recommended_jobs.csv'
+    
+    # Save the DataFrame to a CSV file
+    recommendedJobs.to_csv(output_file_path, index=False)
+
+    logging.debug(f"Recommended jobs have been saved to {output_file_path}.") 
 
     return 
 
@@ -92,19 +138,18 @@ def main():
     
     #Variables that are used for this script: 
     indexName = "job-postings" 
-    namsSpace = "full_posting_description"
+    namsSpace = "full-posting-description"
     resumeRelativeFilePath = "Resumes\\MatthewCarawayResume.pdf"
     
     resume = returnPdfResumeAsString(resumeRelativeFilePath)
 
     embeddedResume = convertToEmbedding(resume)
 
-    listOf25Neightbors = getTopNearestJobPostings(embeddedResume, 25, indexName, namsSpace )
+    listOfNeightbors = getTopNearestNeighborsInNamespace(embeddedResume, 250, indexName, namsSpace )
 
-    recomendedJobs = getJobPostingDataForNearestNeighbors(listOf25Neightbors)
+    recomendedJobs = getJobPostingDataForNearestNeighbors(listOfNeightbors)
 
-    #printResultsToOutputFile(recomendedJobs)
-    printResultsToOutputFile(listOf25Neightbors)
+    printResultsToOutputFile(recomendedJobs)
 
     return 
 

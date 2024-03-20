@@ -67,7 +67,6 @@ class PineConeDatabaseCaller:
             namespace = namsSpace,
             vector = embeddedResume,
             top_k = numberOfNeighbors,
-            include_values = True,
             include_metadata = True
             )
 

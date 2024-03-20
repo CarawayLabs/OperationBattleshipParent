@@ -493,3 +493,89 @@ class JobPostingDao:
 
 
         return
+    
+    def getjobsFromListOfJobsIds(self, dataframeOfJobIds):
+        """
+        Purpose: When given a list of Job_Ids, this function will call the job_postings table and return the list of jobs that match the given IDs. 
+
+        Args:
+            dataframeOfJobIds: Pandas Dataframe where one column contains 'id' and this corresponds to job_posting_id in the Postgres DB
+
+        Return Value:
+            Pandas Dataframe of each job record, company name and aother associated metadata.  
+        """
+        job_ids = dataframeOfJobIds['job_id'].tolist()
+
+        # Convert list of job_ids to tuple for SQL query
+        job_ids_tuple = tuple(job_ids)
+
+        # SQL query
+        sql_query = f"""
+        SELECT
+            c.company_name,
+            jp.job_title,
+            jp.posting_url,
+            jp.full_posting_description,
+            jp.job_description,
+            jp.is_ai,
+            jp.is_genai,
+            jp.salary_low,
+            jp.salary_midpoint,
+            jp.salary_high,
+            jp.job_salary,
+            jp.job_category,
+            jp.job_posting_date,
+            jp.job_posting_id AS job_posting_id,
+            jp.company_id,
+            jp.posting_source,
+            jp.posting_source_id,
+            jp.job_posting_company_information,
+            jp.job_insertion_date,
+            jp.job_last_collected_date,
+            jp.job_active,
+            jp.city,
+            jp.state,
+            jp.job_skills,
+            jp.is_ai_justification,
+            jp.work_location_type
+        FROM
+            job_postings jp
+        JOIN
+            companies c ON jp.company_id = c.company_id
+        WHERE
+            jp.job_posting_id IN %s;
+        """
+        # Establish a connection to the database
+        conn = psycopg2.connect(
+            host=os.getenv("host"),
+            database=os.getenv("database"),
+            user=os.getenv("digitalOcean"),
+            password=os.getenv("password"),
+            port=os.getenv("port")
+            )
+        try:
+            # Create a new cursor
+            cur = conn.cursor()
+
+            # Execute the SQL query with parameterized input for safety
+            cur.execute(sql_query, (job_ids_tuple,))
+
+            # Fetch all the rows
+            rows = cur.fetchall()
+
+            # Convert the results into a pandas DataFrame
+            if rows:
+                df = pd.DataFrame(rows, columns=[desc[0] for desc in cur.description])
+            else:
+                df = pd.DataFrame()
+
+            # Close the cursor and connection
+            cur.close()
+            conn.close()
+
+            return df
+
+        except Exception as e:
+            print("Database connection error:", e)
+            conn.close()
+            return pd.DataFrame()
