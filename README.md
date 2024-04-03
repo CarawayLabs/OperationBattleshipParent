@@ -11,7 +11,8 @@ In a world where top-tier talent often misses out on the opportunities that matc
 ### Product Pitch Video
 Please see this Youtube Video for a little deeper introduction into this project. 
 
-**Coming Soon...**
+[![Operation Battleship Product Introduction](http://img.youtube.com/vi/-6Ediwcd32c/0.jpg)](https://youtu.be/-6Ediwcd32c "Operation Battleship Product Introduction")
+
 
 
 ### Additional Product Management Collateral:
