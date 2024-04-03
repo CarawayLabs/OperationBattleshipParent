@@ -57,7 +57,11 @@ class ApifyJobsCaller:
         run_input = {
             "location": "United States",
             "rows": 1000,
-            "title": job_title_name
+            "title": job_title_name,
+            "proxy": {
+                "useApifyProxy": True,
+                "apifyProxyGroups": ["RESIDENTIAL"],
+                }
         }
 
         if publishedAt is not None:

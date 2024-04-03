@@ -9,6 +9,7 @@ import inspect
 import json
 import sys
 import logging
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
@@ -49,6 +50,7 @@ def createJobsReport(fileName, duration):
     for role in roles:
         apifyJobsCrawler = ApifyJobsCaller()
         jobReportFileName = apifyJobsCrawler.execute_new_jobs_crawler(role["title"], duration)
+        time.sleep(10)
         persistedFiles.append(jobReportFileName )
 
     return persistedFiles

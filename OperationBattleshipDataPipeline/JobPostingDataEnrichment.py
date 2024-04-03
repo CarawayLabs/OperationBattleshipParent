@@ -29,6 +29,12 @@ import logging
 import uuid 
 import pandas as pd
 from dotenv import load_dotenv
+from datetime import datetime
+from pathlib import Path
+
+from operation_battleship_common_utilities.NomicAICaller import NomicAICaller
+from operation_battleship_common_utilities.PineConeDatabaseCaller import PineConeDatabaseCaller
+
 
 # Get the directory of the script being run:
 current_script_path = os.path.abspath(__file__)
@@ -52,8 +58,11 @@ from CommonUtilities.JobTitleCategoryClassifier import JobTitleCategoryClassifie
 
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log_file_path = os.path.join(Path(__file__).parent.absolute(), 'logfile.log')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s',
+                    filename=log_file_path,
+                    filemode='w')
 
 
 #Function to generate a prompt for the LLM that has the purpose of classifiying the job details
@@ -109,8 +118,131 @@ def getUnprocessedAiClassificationJobs():
     #jobsToCategorize = jobPostingDao.fetchJobsRequiringEnrichment()
     jobsToCategorize = jobPostingDao.fetchPmJobsRequiringEnrichment()
     return jobsToCategorize
-    
 
+
+def cleanAllValues(job_posting):
+
+    """
+    The job_posting arguement is a row from a pandas dataframe and we want to update if any of these values are null. 
+    The text below lists the variable name and also the value we will assign to if it is null. 
+    "is_ai' = false (boolean)
+    'job_posting_date' = current date, as written in this format: (2023-12-01)
+    'salary_low' = -1 (int)
+    'salary_midpoint' = -1 (int)
+    'salary_high' = -1 (int)
+    'is_genai' = false (boolean)
+    'work_location_type' = remote (string)
+    'job_category' = unknown (string)
+    """
+    # Define default values for each specified column
+    defaults = {
+        'is_ai': False,
+        'job_posting_date': datetime.now(),  # Current date in 'YYYY-MM-DD' format
+        'salary_low': -1,
+        'salary_midpoint': -1,
+        'salary_high': -1,
+        'is_genai': False,
+        'work_location_type': 'remote',
+        'job_category': 'unknown',
+        'job_description': 'Empty Text'
+    }
+    
+    # Iterate through the defaults dictionary and update job_posting if value is NaN, null, or empty
+    for column, default_value in defaults.items():
+        if pd.isna(job_posting[column]) or job_posting[column] == '':
+            logging.debug(f"Value is null on job record. Updating for column name: {column}")
+            job_posting[column] = default_value
+        elif column == 'job_posting_date':  # Ensure job_posting_date is always a datetime object
+            # Convert to datetime if not null or already a datetime object
+            if not isinstance(job_posting[column], datetime):
+                try:
+                    job_posting[column] = pd.to_datetime(job_posting[column]).date()
+                except ValueError:
+                    logging.error(f"Invalid date format in 'job_posting_date' for job record. Setting to default current date.")
+                    job_posting[column] = defaults['job_posting_date'].date()
+            else:
+                job_posting[column] = job_posting[column].date()  # Ensure format is date only, no time
+
+    return job_posting
+
+def embedTextAndAddMetadata(job_record, columnToEmbed):
+    
+    data = {}
+    nomicAICaller = NomicAICaller()
+    job_record = cleanAllValues(job_record)
+
+    textToEmbed = job_record[columnToEmbed]
+    embedding = nomicAICaller.embedDocument(textToEmbed)
+    
+    job_posting_id = job_record["job_posting_id"]
+    metadata = {
+        'is_ai': job_record['is_ai'],
+        'is_genai': job_record['is_genai'],
+        'salary_low': job_record['salary_low'], 
+        'salary_midpoint': job_record['salary_midpoint'],
+        'salary_high': job_record['salary_high'], 
+        'job_category': job_record['job_category'],
+        'job_posting_date': job_record['job_posting_date'], 
+        'work_location_type': job_record['work_location_type'],
+    }
+    data[job_posting_id] = {'embedding': embedding, 'metadata': metadata}
+    
+    return data
+
+def upsertIntoPinecone(indexName, nameSpace, embeddedJobPosting):
+
+    pineConeKey = os.getenv("PINECONE_API_KEY")
+    pineConeDatabaseCaller = PineConeDatabaseCaller(pineConeKey)
+    pineConeDatabaseCaller.upsertEmbeddings(indexName, nameSpace, embeddedJobPosting)
+
+    return
+
+def embedAndUpsertRelevantDocumentsToPinecone(job_record):
+
+    index = "job-postings"
+
+    embeddedJobPosting = embedTextAndAddMetadata(job_record, "full_posting_description")
+    upsertIntoPinecone(index, "full-posting-description", embeddedJobPosting)
+
+    embeddedJobPosting = embedTextAndAddMetadata(job_record, "job_title")
+    upsertIntoPinecone(index, "job-title", embeddedJobPosting)
+
+    embeddedJobPosting = embedTextAndAddMetadata(job_record, "job_description")
+    upsertIntoPinecone(index, "short-job-description", embeddedJobPosting)
+
+    return 
+
+def addToNomicMap(job_record):
+
+    return
+
+def genericJobPostingAttributeInserter(job_record, json_key, dataframe_columns, dao_instance, languageModelResponse):
+    """
+    Inserts job posting attributes into the database using the specified DAO instance.
+    
+    Parameters:
+    - job_record: The job record containing job posting details.
+    - json_key: Key to access the relevant list in the languageModelResponse JSON.
+    - dataframe_columns: Columns to use when creating the DataFrame from the JSON list.
+    - dao_instance: An instance of the DAO class to use for inserting the DataFrame into the database.
+    """
+    # Extract the JSON list using the provided key
+    json_list = languageModelResponse.get(json_key, [])
+    
+    # Create a DataFrame to hold the attributes
+    attributes_dataframe = pd.DataFrame(json_list, columns=[dataframe_columns])
+    
+    # Add job_posting_id and generate unique IDs
+    attributes_dataframe['job_posting_id'] = job_record["job_posting_id"]
+    attributes_dataframe['unique_id'] = [uuid.uuid4() for _ in range(len(attributes_dataframe))]
+    
+    # Reorder the columns if necessary
+    attributes_dataframe = attributes_dataframe[['job_posting_id', 'unique_id', dataframe_columns]]
+    
+    # Use the provided DAO instance to insert the DataFrame into the database
+    dao_instance.insertMethod(attributes_dataframe)  # Note: Adjust `insertMethod` to match the actual method name in your DAO classes.
+
+    return
 
 def enrichJobRecordDetails(job_record):
     """
@@ -140,8 +272,7 @@ def enrichJobRecordDetails(job_record):
         #We should add logic in here that asserts all the expected fields are in the JSON. Will keep calling the LLM until it has the expected fields. 
         languageModelResponse = json.loads(languageModelResponse)
 
-        attribute_names = languageModelResponse.keys()
-        logging.info(f"Attribute names in the JSON: {attribute_names}")
+        logging.debug(f"Attribute names in the JSON: {languageModelResponse.keys()}")
             
         job_record["job_description"] = languageModelResponse["job_description"]
         job_record["is_ai"] = languageModelResponse["is_ai"]
@@ -247,12 +378,16 @@ def enrichJobRecordDetails(job_record):
         jobKeyWordsDao = JobKeyWordsDao()
         jobKeyWordsDao.insertJobKeyWordsForJobPosting(jobKeyWordsDataFrame)
 
+        embedAndUpsertRelevantDocumentsToPinecone(job_record)
+
+        addToNomicMap(job_record)
+
         return
 
     
     except Exception as e:
-            print("Some error occurred the error string:", e)
-            print("Saving info to disk for later inspection.")
+            logging.error(f"Some error occurred during processing. The error string is: {e}")
+            logging.error(f"Saving info to disk for later inspection.")
             failureLogger = FailureLogger()
             failureLogger.logFailedLlmJsonResponse(job_record, languageModelResponse)
             return
@@ -267,7 +402,7 @@ def enrichEachJobAndPersistToDatabase(job_records):
 
     # Ensure unprocessed_jobs is a DataFrame and not None
     if job_records is None or job_records.empty:
-        print("No unprocessed jobs to classify")
+        logging.info(f"No unnprocessed jobs to enrich. Exiting script.")
         return
 
     # Iterate through each job record in the DataFrame
@@ -316,7 +451,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    import sys
-    # Convert command line arguments to a dictionary or any suitable format
+    
     args = {"name": sys.argv[1]} if len(sys.argv) > 1 else {}
     main(args)

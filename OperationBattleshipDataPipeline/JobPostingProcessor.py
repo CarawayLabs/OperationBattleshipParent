@@ -261,6 +261,35 @@ def ensureJobPostingHasDate(individualJobRecord):
 
     return individualJobRecord
 
+def checkCompanyNameToSeeIfJunk(individualJobRecord):
+    """
+    We don't want to consider jobs for these companies:
+        a
+        a
+        a
+    
+    We will call the JobDao and get the Company Name
+    """
+    companyLinkedinUrl = individualJobRecord['companyUrl']
+    companyDao = CompanyDao()
+    company_id = companyDao.getCompanyUuidByLinkedInUrl(companyLinkedinUrl)
+    company_name = companyDao.getCompanyNameByCompanyId(company_id)
+
+    #Relavtive File Path of JSON File with excluded companies
+    json_relative_path = f"Configuration/ExcludedCompanies.json"
+    script_dir = os.path.dirname(__file__)  
+    abs_file_path = os.path.join(script_dir, json_relative_path)
+
+    # Step 1: Open the JSON file
+    with open(abs_file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+
+    excluded_companies = data.get("Companies", [])
+
+    # Check if company_name is contained in the list of excluded companies. 
+    # Return True if yes, False otherwise.
+    return company_name in excluded_companies
+
 
 def processJobRecord(individualJobRecord):
     """
@@ -274,7 +303,13 @@ def processJobRecord(individualJobRecord):
     individualJobRecord['jobUrl'] = remove_query_parameters(individualJobRecord['jobUrl'])
     individualJobRecord['companyUrl'] = remove_query_parameters(individualJobRecord['companyUrl'])
     individualJobRecord = ensureJobPostingHasDate(individualJobRecord)
-    
+
+    # Some companies aren't worth it. We will skip the whole insertion process if its a junk company
+    """
+    isJunkCompany = checkCompanyNameToSeeIfJunk(individualJobRecord)
+    if isJunkCompany:
+        return
+    """
     # Call doesJobExist() with the current row. 
     doesJobExist = doesLinkedInJobExist(individualJobRecord)
 

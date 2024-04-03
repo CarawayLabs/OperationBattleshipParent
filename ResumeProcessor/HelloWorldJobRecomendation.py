@@ -73,7 +73,7 @@ def convertToEmbedding(resume):
 
 def getTopNearestNeighborsInNamespace(embeddedResume, numberOfNeighbors, indexName, namsSpace):
 
-    #Create an instance of PineConeDatabaseCaller and then search for 25 KNN of the input vector
+    #Create an instance of PineConeDatabaseCaller and then search for Top N KNN of the input vector
     pineconeApiKey = os.getenv("PINECONE_API_KEY")
     pineConeDatabaseCaller = PineConeDatabaseCaller(pineconeApiKey)
     nearestJobPostings = pineConeDatabaseCaller.query(embeddedResume[0], numberOfNeighbors, indexName, namsSpace)
@@ -121,7 +121,7 @@ def printResultsToOutputFile(recommendedJobs):
 
 def returnPdfResumeAsString(resumeRelativeFilePath):
     """
-    This function takes in the resume as a PDF is is responsible for opening the file and converting it to a string so it can be returned.
+    This function takes in the resume as a PDF and is responsible for opening the file and converting it to a string so it can be returned.
 
     Args: 
         - resumeRelativeFilePath this is the relative file path to the document that represents the applican'ts resume. Its expected to be in PDF Form. 

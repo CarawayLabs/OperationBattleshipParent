@@ -504,7 +504,7 @@ class JobPostingDao:
         Return Value:
             Pandas Dataframe of each job record, company name and aother associated metadata.  
         """
-        job_ids = dataframeOfJobIds['job_id'].tolist()
+        job_ids = dataframeOfJobIds['job_posting_id'].tolist()
 
         # Convert list of job_ids to tuple for SQL query
         job_ids_tuple = tuple(job_ids)
