@@ -407,6 +407,7 @@ def enrichEachJobAndPersistToDatabase(job_records):
 
     # Iterate through each job record in the DataFrame
     start_time = time.time() 
+
     for index, job_record in job_records.iterrows():
         job_start_time = time.time()
         try:
