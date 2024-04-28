@@ -213,18 +213,20 @@ def insertNewLinkedInJobRecord(individualJobRecord):
 
     jobpostingDataFrame = pd.concat([jobpostingDataFrame, pd.DataFrame([new_row])], ignore_index=True)
     jobPostingDao = JobPostingDao()
-    succesStatus = jobPostingDao.insertNewJobRecord(jobpostingDataFrame)
 
-    #If the insertion for this job record fails, we can just save the job record to CSV and troubleshoot it later. 
-    if succesStatus == -1:
-        failedJobsCount = failedJobsCount + 1
+    try:
+        successStatus = jobPostingDao.insertNewJobRecord(jobpostingDataFrame)
+        if successStatus == -1:
+            raise Exception("Database insertion failed with status -1")
+    except Exception as e:
+        logging.error(f"Error inserting job record: {e}")
+        # Save the job record to CSV for troubleshooting
         fileName = getLinkedInJobRecordId(individualJobRecord["jobUrl"]) + ".csv"
-        failedJobTitles.append(individualJobRecord["jobUrl"])
         jobpostingDataFrame.to_csv(fileName, index=False, encoding='utf-8')
-        logging.info(f"Saving failed job record as CSV. Filename:  {fileName}")
-        
+        logging.info(f"Failed job record saved as CSV. Filename: {fileName}")
+        return False
 
-    return
+    return True
 
 """
 -Check to see if this company exists, 

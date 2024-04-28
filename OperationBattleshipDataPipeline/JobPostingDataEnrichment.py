@@ -175,6 +175,7 @@ def embedTextAndAddMetadata(job_record, columnToEmbed):
     embedding = nomicAICaller.embedDocument(textToEmbed)
     
     job_posting_id = job_record["job_posting_id"]
+
     metadata = {
         'is_ai': job_record['is_ai'],
         'is_genai': job_record['is_genai'],
@@ -182,12 +183,20 @@ def embedTextAndAddMetadata(job_record, columnToEmbed):
         'salary_midpoint': job_record['salary_midpoint'],
         'salary_high': job_record['salary_high'], 
         'job_category': job_record['job_category'],
-        'job_posting_date': job_record['job_posting_date'], 
+        'job_posting_date': convertDateToInt(str(job_record['job_posting_date'])), 
         'work_location_type': job_record['work_location_type'],
     }
     data[job_posting_id] = {'embedding': embedding, 'metadata': metadata}
     
     return data
+
+def convertDateToInt(date_str, epoch_str='1970-01-01'):
+
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+    epoch = datetime.strptime(epoch_str, '%Y-%m-%d')
+    delta = date - epoch
+    return delta.days
+
 
 def upsertIntoPinecone(indexName, nameSpace, embeddedJobPosting):
 
