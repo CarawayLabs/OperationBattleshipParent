@@ -155,7 +155,7 @@ class CompanyDao:
         except Exception as e:
             # Log or print the error for debugging
             print("Database connection error:", e)
-            logging.info(f"Database error in CompanyDao.insertCompany for Company at: {companyDataFrame["company_name"]} ")  
+            logging.info(f"Database error in CompanyDao.insertCompany for Company at: {companyDataFrame['company_name']} ")  
             # Close the connection in case of error
             if conn:
                 conn.close()

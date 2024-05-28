@@ -1,0 +1,44 @@
+{
+    "Roles": [
+        {
+            "title": "Data Scientist",
+            "description": "Analyzes and interprets complex digital data to assist a company in its decision-making processes."
+        },
+        {
+            "title": "Machine Learning Engineer",
+            "description": "Designs and develops machine learning and deep learning systems, runs tests and experiments to monitor the efficiency and functionality of such systems."
+        },
+        {
+            "title": "Deep Learning Engineer",
+            "description": "Specializes in using deep learning frameworks to design, build and maintain scalable machine learning models."
+        },
+        {
+            "title": "AI Research Scientist",
+            "description": "Focuses on developing new algorithms and models in artificial intelligence to advance the capabilities of AI technologies."
+        },
+        {
+            "title": "Lead Data Scientist",
+            "description": "Leads a team of data scientists in designing and implementing models and algorithms that drive the analytical capabilities of the business."
+        },
+        {
+            "title": "Senior Machine Learning Engineer",
+            "description": "Possesses advanced experience in machine learning and typically works on designing sophisticated models and algorithms that are crucial for the company's products."
+        },
+        {
+            "title": "Data Analytics Manager",
+            "description": "Oversees the data analysis and data science operations within the company, ensuring that insights gained from data analyses are actionable and relevant."
+        },
+        {
+            "title": "Director of Machine Learning",
+            "description": "A senior position responsible for all aspects of machine learning projects, from development to deployment and maintenance."
+        },
+        {
+            "title": "ML Ops Engineer",
+            "description": "Works on the operationalization of machine learning models, including automation, scaling, and integration into production environments."
+        },
+        {
+            "title": "Quantitative Analyst",
+            "description": "Applies mathematical and statistical models to solve financial and risk management problems, often using machine learning techniques."
+        }
+    ]
+}

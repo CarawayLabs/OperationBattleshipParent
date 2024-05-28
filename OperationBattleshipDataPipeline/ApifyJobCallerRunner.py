@@ -13,24 +13,13 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
-
-# Get the directory of the script being run:
-current_script_path = os.path.abspath(__file__)
-
-# Get the parent directory of the current script:
-parent_directory = os.path.dirname(os.path.dirname(current_script_path))
-
-# Add the parent directory to the sys.path:
-if parent_directory not in sys.path:
-    sys.path.append(parent_directory)
-
-from CommonUtilities.ApifyJobsCaller import ApifyJobsCaller
+from operation_battleship_common_utilities.ApifyJobsCaller import ApifyJobsCaller
 
 
 def createJobsReport(fileName, duration):
     script_name = os.path.basename(__file__)
     func_name = inspect.currentframe().f_code.co_name
-    logging.info(f"We have entered {func_name} function in script {script_name}")
+    logging.debug(f"We have entered {func_name} function in script {script_name}")
     
 
     #Construct the file path for the JSON file with the Job Roles    
@@ -71,7 +60,7 @@ def removeDuplicates(persistedFiles):
 
     script_name = os.path.basename(__file__)
     func_name = inspect.currentframe().f_code.co_name
-    logging.info(f"We have entered {func_name} function in script {script_name}")
+    logging.debug(f"We have entered {func_name} function in script {script_name}")
 
      # Initialize an empty list to store all JSON objects
     all_jobs = []
@@ -139,6 +128,7 @@ if __name__ == "__main__":
     import sys
     # Default values
     defaultFileName = "AiPmJobTitles.json"
+    #defaultFileName = "DsJobTitles.json"
     defaultDuration = 1
 
     # Extract arguments with default values
@@ -148,7 +138,7 @@ if __name__ == "__main__":
         duration = int(sys.argv[2]) if len(sys.argv) > 2 else defaultDuration
     except ValueError:
         # Handle the case where the second argument is not a valid integer
-        print("Warning: Duration argument is invalid. Using default value of 1.")
+        logging.warn("Warning: Duration argument is invalid. Using default value of 1.")
         duration = defaultDuration
 
     logging.info(f"Script is using filename: {fileName} and time setting: {duration}")

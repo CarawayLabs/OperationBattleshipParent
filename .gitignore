@@ -15,3 +15,9 @@ OperationBattleshipDataPipeline/RawCollections/*
 OperationBattleshipDataPipeline/ProcessedCollections/*
 !OperationBattleshipDataPipeline/ProcessedCollections/.gitkeep
 
+# Ignore all files in OperationBattleshipDataPipeline/llmFailures, but keep the directory
+OperationBattleshipDataPipeline/llmFailures/*
+!OperationBattleshipDataPipeline/llmFailures/.gitkeep
+
+# Ignore text files in Utilities directory
+OperationBattleshipParent/Utilities/*.txt

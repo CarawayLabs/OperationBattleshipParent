@@ -44,19 +44,9 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 
-# Get the directory of the script being run:
-current_script_path = os.path.abspath(__file__)
-
-# Get the parent directory of the current script:
-parent_directory = os.path.dirname(os.path.dirname(current_script_path))
-
-# Add the parent directory to the sys.path:
-if parent_directory not in sys.path:
-    sys.path.append(parent_directory)
-
-from CommonUtilities.JobPostingDao import JobPostingDao
-from CommonUtilities.CompanyDao import CompanyDao
-from CommonUtilities.GeographyHelper import GeographyHelper
+from operation_battleship_common_utilities.JobPostingDao import JobPostingDao
+from operation_battleship_common_utilities.CompanyDao import CompanyDao
+from operation_battleship_common_utilities.GeographyHelper import GeographyHelper
 
 load_dotenv()
 
@@ -190,7 +180,7 @@ def insertNewLinkedInJobRecord(individualJobRecord):
     # Assign values to the specified columns
     # Create a new row with the specified values
     new_row = {
-        "job_posting_id": uuid.uuid4(),  # Generate a new UUID
+        "job_posting_id": str(uuid.uuid4()),  # Generate a new UUID
         "company_id" : getCompanyIdByCompanyLinkedInUrl(individualJobRecord["companyUrl"]),
         "posting_url" : individualJobRecord["jobUrl"],
         "posting_source" : "linkedin",
@@ -213,18 +203,21 @@ def insertNewLinkedInJobRecord(individualJobRecord):
 
     jobpostingDataFrame = pd.concat([jobpostingDataFrame, pd.DataFrame([new_row])], ignore_index=True)
     jobPostingDao = JobPostingDao()
-    succesStatus = jobPostingDao.insertNewJobRecord(jobpostingDataFrame)
 
-    #If the insertion for this job record fails, we can just save the job record to CSV and troubleshoot it later. 
-    if succesStatus == -1:
-        failedJobsCount = failedJobsCount + 1
-        fileName = getLinkedInJobRecordId(individualJobRecord["jobUrl"]) + ".csv"
-        failedJobTitles.append(individualJobRecord["jobUrl"])
-        jobpostingDataFrame.to_csv(fileName, index=False, encoding='utf-8')
-        logging.info(f"Saving failed job record as CSV. Filename:  {fileName}")
+    try:
+        successStatus = jobPostingDao.insertNewJobRecord(jobpostingDataFrame)
+      
         
+    except Exception as e:
+        logging.error(f"Error inserting job record: {e}")
 
-    return
+        # Save the job record to CSV for troubleshooting
+        fileName = getLinkedInJobRecordId(individualJobRecord["jobUrl"]) + ".csv"
+        jobpostingDataFrame.to_csv(fileName, index=False, encoding='utf-8')
+        logging.info(f"Failed job record saved as CSV. Filename: {fileName}")
+        return False
+
+    return True
 
 """
 -Check to see if this company exists, 
@@ -239,11 +232,13 @@ def processNewLinkedInJobRecord(individualJobRecord):
 
     #If the Company is found in the DB, we will just need to create a new LinkedIn Job Record. 
     if doesCompanyExist:
+        logging.info(f"Company already exists in DB, inserting job record. Company Name: {individualJobRecord['companyName']} Job Title: {individualJobRecord['title']}")
         insertNewLinkedInJobRecord(individualJobRecord)
     
     #If the Company does not exist, we have to insert the company first. 
     #We will then insert the job record following the company
     else:
+        logging.info(f"Company doesn't exist yet. Job Title: {individualJobRecord['title']}")
         insertNewCompanyIntoDb(individualJobRecord)
         insertNewLinkedInJobRecord(individualJobRecord)
 
@@ -397,10 +392,16 @@ def main(args):
 
     # Get the list of JSON files in the raw collections folder
     files = [file for file in os.listdir(raw_collections_dir) if file.endswith('.json')]
+    with open("raw_collections.txt", "w") as f:
+        for file in files:
+            f.write(f"{file}\n")
 
     # Process each JSON file
     for file in files:
         file_path = os.path.join(raw_collections_dir, file)
+
+        with open("raw_collections.txt", "a") as f:
+            f.write(f"Processing file with name: {file}\n")
         
 
         # Open and load the contents of the JSON file into a DataFrame
@@ -443,15 +444,16 @@ def newMain(args):
     I'll get a list of all Job IDs in the database and store in a list of some form. 
 
     I will them open a JSON File from the Raw Collections Folder,
-    Create a list of jobs that are new and also a list of jobs that have been seen before. 
-    This will save a lot of calls since we will already know which jobs just need an update time. We save at least one SQL Query for each job
 
-    For the list of jobs that need inserted, we will do those first. 
+    For the jobs that already exist, we will update those. 
 
-    For the list of jobs that need updated, we will do a mass update for those jobs. 
+    Then we will get a list of the company names, 
+    For the company names that already exist, we will insert those job records next. 
+
+    And then, for all the jobs that are new and we have not seen these companies before, we will insert them next. 
+
+    The assumption is that we will save significant DB query time by have the list of existing companies and jobs already. 
     """
-
-
 
     # Define the directories
     raw_collections_dir = "C:\\Users\\caraw\\OneDrive\\Documents\\PythonProjects\\OperationBattleship\\RawCollections"
@@ -460,10 +462,22 @@ def newMain(args):
     # Get the list of JSON files in the raw collections folder
     files = [file for file in os.listdir(raw_collections_dir) if file.endswith('.json')]
 
+    # Print the list of file names to a new file called, "raw_collections.txt"
+    # Print them in a single line each. 
+
     # Process each JSON file
     for file in files:
         file_path = os.path.join(raw_collections_dir, file)
+        # Write the name of this file to "raw_collections.txt" Append as a new line at the end of the file. 
+        # Write, "processing file with name: {filename}"
+        with open("raw_collections.txt", "a") as f:
+            f.write(f"Processing file with name: {file}\n")
         
+
+        with open("raw_collections.txt", "w") as f:
+            for file in files:
+                f.write(f"{file}\n") 
+            
 
         # Open and load the contents of the JSON file into a DataFrame
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -489,8 +503,6 @@ def newMain(args):
         # Process each job record in the DataFrame
         for _, row in newJobsToProcessAsDataFrame.iterrows():
                 start_time = time.time()
-                
-                # Do things here
 
                 end_time = time.time()  # Capture end time
                 duration_ms = (end_time - start_time) * 1000  # Calculate duration in milliseconds
@@ -516,4 +528,5 @@ if __name__ == "__main__":
     import sys
     # Convert command line arguments to a dictionary or any suitable format
     args = {"name": sys.argv[1]} if len(sys.argv) > 1 else {}
+
     main(args)

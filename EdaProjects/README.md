@@ -12,6 +12,13 @@ As we build out this application, we will consider the opporunities to explore t
     - As we've built the application, I've take a couple ad-hoc looks at the job postings. It appears that the low quality jobs and also the contractor jobs are often short in length. Lets see what we can learn about the length of a Job Posting. 
 
 
+- Word cloud
+- word count distribution for job postings
+- take out the stop words and then get the word frequency of all words in the job postings
+- get a word frequency of all words in the job skills
+- create a word cloud of all words in the job skills. 
+
+
 # ML Techniques 
 In addition to basic EDA, we will have a backlog of different ML project to potentially apply to this dataset. 
 

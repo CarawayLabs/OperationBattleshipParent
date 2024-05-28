@@ -32,28 +32,17 @@ from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
 
+from operation_battleship_common_utilities.JobPostingDao import JobPostingDao
+from operation_battleship_common_utilities.CandidateRequirementsDao import CandidateRequirementsDao
+from operation_battleship_common_utilities.JobResponsibilitiesDao import JobResponsibilitiesDao
+from operation_battleship_common_utilities.JobSkillsDao import JobSkillsDao
+from operation_battleship_common_utilities.JobKeyWordsDao import JobKeyWordsDao
+from operation_battleship_common_utilities.JobTitleCategoryClassifier import JobTitleCategoryClassifier
+from operation_battleship_common_utilities.FailureLogger import FailureLogger
+
 from operation_battleship_common_utilities.NomicAICaller import NomicAICaller
+from operation_battleship_common_utilities.OpenAICaller import OpenAICaller
 from operation_battleship_common_utilities.PineConeDatabaseCaller import PineConeDatabaseCaller
-
-
-# Get the directory of the script being run:
-current_script_path = os.path.abspath(__file__)
-
-# Get the parent directory of the current script:
-parent_directory = os.path.dirname(os.path.dirname(current_script_path))
-
-# Add the parent directory to the sys.path:
-if parent_directory not in sys.path:
-    sys.path.append(parent_directory)
-
-from CommonUtilities.OpenAICaller import OpenAICaller
-from CommonUtilities.JobPostingDao import JobPostingDao
-from CommonUtilities.CandidateRequirementsDao import CandidateRequirementsDao
-from CommonUtilities.JobResponsibilitiesDao import JobResponsibilitiesDao
-from CommonUtilities.JobSkillsDao import JobSkillsDao
-from CommonUtilities.JobKeyWordsDao import JobKeyWordsDao
-from CommonUtilities.FailureLogger import FailureLogger
-from CommonUtilities.JobTitleCategoryClassifier import JobTitleCategoryClassifier
 
 
 load_dotenv()
@@ -64,6 +53,17 @@ logging.basicConfig(level=logging.DEBUG,
                     filename=log_file_path,
                     filemode='w')
 
+def dropUnnededColumns(job_record):
+    columns_to_drop = [
+        'kmeansclusterid', 
+        'dbscanclusterid', 
+        'opticsclusterid', 
+        'kmeansclustertopicname', 
+        'dbscanclustertopicname', 
+        'opticsclustertopicname'
+    ]
+    job_record = job_record.drop(labels=[col for col in columns_to_drop if col in job_record.index])
+    return job_record
 
 #Function to generate a prompt for the LLM that has the purpose of classifiying the job details
 def createPromptFromJobDescription(description, salary_range):
@@ -175,6 +175,7 @@ def embedTextAndAddMetadata(job_record, columnToEmbed):
     embedding = nomicAICaller.embedDocument(textToEmbed)
     
     job_posting_id = job_record["job_posting_id"]
+
     metadata = {
         'is_ai': job_record['is_ai'],
         'is_genai': job_record['is_genai'],
@@ -182,12 +183,20 @@ def embedTextAndAddMetadata(job_record, columnToEmbed):
         'salary_midpoint': job_record['salary_midpoint'],
         'salary_high': job_record['salary_high'], 
         'job_category': job_record['job_category'],
-        'job_posting_date': job_record['job_posting_date'], 
+        'job_posting_date': convertDateToInt(str(job_record['job_posting_date'])), 
         'work_location_type': job_record['work_location_type'],
     }
     data[job_posting_id] = {'embedding': embedding, 'metadata': metadata}
     
     return data
+
+def convertDateToInt(date_str, epoch_str='1970-01-01'):
+
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+    epoch = datetime.strptime(epoch_str, '%Y-%m-%d')
+    delta = date - epoch
+    return delta.days
+
 
 def upsertIntoPinecone(indexName, nameSpace, embeddedJobPosting):
 
@@ -254,7 +263,6 @@ def enrichJobRecordDetails(job_record):
 
     """
     
-    
     # Crafting a prompt for the language model
     description = job_record["full_posting_description"]
     salary_range = job_record["job_salary"]
@@ -289,7 +297,10 @@ def enrichJobRecordDetails(job_record):
 
         #Add the new job category
         jobTitleCategoryClassifier = JobTitleCategoryClassifier()
-        job_record["job_category"] = jobTitleCategoryClassifier.get_job_category(job_record["job_title"]) 
+        job_record["job_category"] = jobTitleCategoryClassifier.get_job_category(job_record["job_title"])
+
+        #We don't need all of the columns in the DF. We can drop for now. 
+        job_record = dropUnnededColumns(job_record) 
 
 
         jobPostingDao = JobPostingDao()
@@ -442,6 +453,9 @@ def main(args):
 
     # We will first get a record of all the jobs which have not been classified. 
     unprocessed_jobs = getUnprocessedAiClassificationJobs()
+  
+    unprocessed_jobs = unprocessed_jobs.sort_values(by='job_posting_date', ascending=False)
+
 
     # Once we've got the list of jobs to process, 
     # We send the dataframe to a function that will call the LLM and get more structured and robust data about the jobs. 
