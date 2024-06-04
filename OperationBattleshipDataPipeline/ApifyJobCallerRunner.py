@@ -10,11 +10,12 @@ import json
 import sys
 import logging
 import time
+import random
+import string
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 from operation_battleship_common_utilities.ApifyJobsCaller import ApifyJobsCaller
-
 
 def createJobsReport(fileName, duration):
     script_name = os.path.basename(__file__)
@@ -62,12 +63,12 @@ def removeDuplicates(persistedFiles):
     func_name = inspect.currentframe().f_code.co_name
     logging.debug(f"We have entered {func_name} function in script {script_name}")
 
-     # Initialize an empty list to store all JSON objects
+    # Initialize an empty list to store all JSON objects
     all_jobs = []
 
     # Read and accumulate JSON objects from each file
     for file_path in persistedFiles:
-         with open(file_path, 'r') as file:
+        with open(file_path, 'r') as file:
             jobs = json.load(file)
             all_jobs.extend(jobs)
 
@@ -90,7 +91,8 @@ def removeDuplicates(persistedFiles):
     # Save each chunk to a separate file
     current_date = datetime.now().strftime("%b%d")
     for i, chunk in enumerate(chunks, start=1):
-        chunk_file_name = f"master_jobs_{current_date}_{i}.json"
+        random_suffix = ''.join(random.choices(string.ascii_lowercase, k=4))
+        chunk_file_name = f"master_jobs_{current_date}_{i}_{random_suffix}.json"
         chunk_file_path = os.path.join(raw_collections_folder, chunk_file_name)
         with open(chunk_file_path, 'w') as chunk_file:
             json.dump(chunk, chunk_file, indent=4)
@@ -121,15 +123,14 @@ This script is expecting two arguments
 If the script has zero arguements, we will asssume:
 1: AiPmJobTitles.json
 2: 1 day
-
-
 """
 if __name__ == "__main__":
     import sys
     # Default values
-    defaultFileName = "AiPmJobTitles.json"
+    #defaultFileName = "AiPmJobTitles.json"
     #defaultFileName = "DsJobTitles.json"
-    defaultDuration = 1
+    defaultFileName = "UxResearchJobTitles.json"
+    defaultDuration = 7
 
     # Extract arguments with default values
     fileName = sys.argv[1] if len(sys.argv) > 1 else defaultFileName
@@ -143,3 +144,4 @@ if __name__ == "__main__":
 
     logging.info(f"Script is using filename: {fileName} and time setting: {duration}")
     main(fileName, duration)
+

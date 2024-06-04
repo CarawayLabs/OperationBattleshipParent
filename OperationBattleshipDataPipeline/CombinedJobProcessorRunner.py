@@ -37,7 +37,9 @@ def main(custom_args={}):
     scripts = [
         ("OperationBattleshipDataPipeline/ApifyJobCallerRunner.py", custom_args.get("job_args", [])),
         ("OperationBattleshipDataPipeline/JobPostingProcessor.py", []),
-        ("OperationBattleshipDataPipeline/JobPostingDataEnrichment.py", [])
+        ("OperationBattleshipDataPipeline/JobPostingDataEnrichment.py", []),
+        ("OperationBattleshipDataPipeline/NomicMapCreator.py", [])
+
     ]
 
     # Execute each script in sequence

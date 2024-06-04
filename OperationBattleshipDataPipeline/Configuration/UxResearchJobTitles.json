@@ -1,0 +1,44 @@
+{
+    "Roles": [
+        {
+            "title": "UX Researcher",
+            "description": "Conducts user research to gather insights and feedback to improve the design and usability of products."
+        },
+        {
+            "title": "Senior UX Researcher",
+            "description": "Leads complex research projects, mentors junior researchers, and provides actionable insights to guide design decisions."
+        },
+        {
+            "title": "Principal UX Researcher",
+            "description": "Oversees the entire UX research strategy, ensures the alignment of research activities with business goals, and drives high-impact projects."
+        },
+        {
+            "title": "Lead UX Researcher",
+            "description": "Manages a team of UX researchers, coordinates research efforts across projects, and ensures the quality and relevance of research outcomes."
+        },
+        {
+            "title": "UX Research Manager",
+            "description": "Manages the UX research team, develops research plans, and collaborates with cross-functional teams to integrate user insights into product development."
+        },
+        {
+            "title": "User Research Specialist",
+            "description": "Specializes in specific research methods and techniques to gather deep insights into user behaviors and preferences."
+        },
+        {
+            "title": "UX Research Coordinator",
+            "description": "Coordinates research activities, schedules sessions, manages participant recruitment, and ensures smooth execution of research plans."
+        },
+        {
+            "title": "UX Research Analyst",
+            "description": "Analyzes research data, interprets findings, and provides detailed reports and recommendations to improve user experience."
+        },
+        {
+            "title": "User Experience Strategist",
+            "description": "Develops long-term strategies for user research and experience, aligning them with business objectives and product goals."
+        },
+        {
+            "title": "User Experience Ethnographer",
+            "description": "Conducts ethnographic studies to understand users' behaviors and cultures, providing deep contextual insights for product design."
+        }
+    ]
+}

@@ -32,6 +32,9 @@ from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
 
+import boto3
+from botocore.client import Config
+
 from operation_battleship_common_utilities.JobPostingDao import JobPostingDao
 from operation_battleship_common_utilities.CandidateRequirementsDao import CandidateRequirementsDao
 from operation_battleship_common_utilities.JobResponsibilitiesDao import JobResponsibilitiesDao
@@ -52,19 +55,60 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s',
                     filename=log_file_path,
                     filemode='w')
+def saveLlmQuestionResponsePair(job_posting_id, llmChain, languageModelResponse):
+    """
+    This function is used to save the LLM input and output to an S3 Bucket on Digital Ocean. 
+    We will be using a folder called, "llm".
+    We will create a new folder in this directory that is the job_posting_id
+    We will then write the llmChain in a file. It will be called llmChain.txt
+    We will then wrtie the languageModelResponse in a file. It will be called languageModelResponse.txt
 
-def dropUnnededColumns(job_record):
-    columns_to_drop = [
-        'kmeansclusterid', 
-        'dbscanclusterid', 
-        'opticsclusterid', 
-        'kmeansclustertopicname', 
-        'dbscanclustertopicname', 
-        'opticsclustertopicname'
-    ]
-    job_record = job_record.drop(labels=[col for col in columns_to_drop if col in job_record.index])
-    return job_record
+    Args
+        job_posting_id - This is a UUID that represents the identifier for this job posting.
+        llmChain - This is a <class 'list'>. It is the prompting that we insert to the LLM
+        languageModelResponse - <class 'dict'>. It is intended to be a JSON object that is output from the LLM to give structure to the job posting.    
 
+    Return Value
+        none
+    """
+    print(type(llmChain))
+
+    print(type(languageModelResponse))
+
+    # Convert each item in llmChain to a string
+    llmChain_str = '\n'.join(json.dumps(item) if isinstance(item, dict) else str(item) for item in llmChain)
+    languageModelResponse_str = json.dumps(languageModelResponse, indent=4)
+
+    # DigitalOcean Spaces settings
+    region_name = 'nyc3'
+    endpoint_url = 'https://nyc3.digitaloceanspaces.com'
+    bucket_name = 'operationbattleship-resumes'
+    folder_name = 'llm'
+
+    # Initialize a session using DigitalOcean Spaces
+    session = boto3.session.Session()
+    client = session.client('s3',
+                            region_name=region_name,
+                            endpoint_url=endpoint_url,
+                            aws_access_key_id=os.getenv('DO_SPACES_KEY'),
+                            aws_secret_access_key=os.getenv('DO_SPACES_SECRET'))
+
+    # Define the object keys (file paths) within the Space
+    llmChain_key = f'{folder_name}/{job_posting_id}/llmChain.txt'
+    languageModelResponse_key = f'{folder_name}/{job_posting_id}/languageModelResponse.txt'
+
+    try:
+        # Upload llmChain to DigitalOcean Space
+        client.put_object(Bucket=bucket_name, Key=llmChain_key, Body=llmChain_str, ACL='public-read-write')
+
+        # Upload languageModelResponse to DigitalOcean Space
+        client.put_object(Bucket=bucket_name, Key=languageModelResponse_key, Body=languageModelResponse_str, ACL='public-read-write')
+
+        print("Files uploaded successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    return
 #Function to generate a prompt for the LLM that has the purpose of classifiying the job details
 def createPromptFromJobDescription(description, salary_range):
 
@@ -221,9 +265,28 @@ def embedAndUpsertRelevantDocumentsToPinecone(job_record):
 
     return 
 
-def addToNomicMap(job_record):
+def dropUnneededColumns(job_record):
+    """
+    This object type for this function is: <class 'pandas.core.series.Series'>
 
-    return
+    We want to drop the columns below and then return the object
+    """
+    columns_to_drop = [ 
+        'kmeansclusterid', 
+        'dbscanclusterid', 
+        'opticsclusterid', 
+        'kmeansclustertopicname', 
+        'dbscanclustertopicname', 
+        'opticsclustertopicname'
+    ]
+    
+    # Assuming job_record is part of a DataFrame, we can access the DataFrame using job_record.name
+    df = job_record.to_frame().T
+    df = df.drop(columns=columns_to_drop, errors='ignore')
+    
+    # Convert back to Series and return
+    job_record_cleaned = df.iloc[0]
+    return job_record_cleaned
 
 def genericJobPostingAttributeInserter(job_record, json_key, dataframe_columns, dao_instance, languageModelResponse):
     """
@@ -253,6 +316,14 @@ def genericJobPostingAttributeInserter(job_record, json_key, dataframe_columns, 
 
     return
 
+def process_and_insert(data_json, dao_class, dao_method, job_record):
+    dataframe = pd.DataFrame(data_json, columns=['item'])
+    dataframe['job_posting_id'] = job_record["job_posting_id"]
+    dataframe['unique_id'] = [uuid.uuid4() for _ in range(len(dataframe))]
+    dataframe = dataframe[['job_posting_id', 'unique_id', 'item']]
+    dao_instance = dao_class()
+    getattr(dao_instance, dao_method)(dataframe)
+
 def enrichJobRecordDetails(job_record):
     """
     Job record is a dataframe and contains several columns. One of which is full_posting_description
@@ -260,9 +331,10 @@ def enrichJobRecordDetails(job_record):
     ChatGPT will return a JSON Object. 
 
     Based on different attributes of the JSON, we will create dataframes and insert records into DB. 
-
     """
-    
+
+    logging.info(f"Type of the job_record: {type(job_record)}")
+        
     # Crafting a prompt for the language model
     description = job_record["full_posting_description"]
     salary_range = job_record["job_salary"]
@@ -277,8 +349,10 @@ def enrichJobRecordDetails(job_record):
         return  
 
     try: 
-        #We should add logic in here that asserts all the expected fields are in the JSON. Will keep calling the LLM until it has the expected fields. 
+        # We should add logic in here that asserts all the expected fields are in the JSON. Will keep calling the LLM until it has the expected fields. 
         languageModelResponse = json.loads(languageModelResponse)
+
+        saveLlmQuestionResponsePair(job_record["job_posting_id"], llmChain, languageModelResponse)
 
         logging.debug(f"Attribute names in the JSON: {languageModelResponse.keys()}")
             
@@ -295,106 +369,23 @@ def enrichJobRecordDetails(job_record):
         job_record["state"] = languageModelResponse["state"]
         job_record["work_location_type"] = languageModelResponse["work_location_type"]
 
-        #Add the new job category
+        # Add the new job category
         jobTitleCategoryClassifier = JobTitleCategoryClassifier()
         job_record["job_category"] = jobTitleCategoryClassifier.get_job_category(job_record["job_title"])
 
-        #We don't need all of the columns in the DF. We can drop for now. 
-        job_record = dropUnnededColumns(job_record) 
-
-
+        # Drop some of our columns so we can insert into PostGres and Pinecone        
+        job_record = dropUnneededColumns(job_record) 
+        
         jobPostingDao = JobPostingDao()
         jobPostingDao.update_job_posting(job_record)
 
-        """
-        The code above is probable pretty good.
-        Missing Stepes are stubbed out below.  
-        I have three tables that will need data. I add data to these using a Python DAO Class. 
-        1: Candidate_Requirements
-        2: Job_Responsibilities
-        3: Job Skills
-        4: Job_Keywords
-
-        The data for these tables is found in the JSON from languageModelResponse.
-        1: (Postgres Table Name) Candidate_Requirements - (languageModelResponse JSON)
-        2: (Postgres Table Name) Job_Responsibilities (languageModelResponse JSON)
-        3: (Postgres Table Name) Job_Keywords (languageModelResponse JSON)
-
-        Can I associate the JSON Object / List with the new DF?
-        Can I get the new DF to be saved into the DB via the JobPostingDao
-        Now do it for the other two types also. 
-
-        candidateRequirementsDao
-        job_responsibilities
-        JobKeyWordsDao
-
-
-        """
-
-        #1: Candidate_Requirements
-        
-        #The LLM does a better job to parse the data when we call it "job_requirements". But I chose a different name for the datamodel. 
-        candidateRequirementsJSON = languageModelResponse.get("job_requirements", [])
-        
-        # Create a DataFrame to hold the Candidate Requirements
-        candidateRequirementsDataframe = pd.DataFrame(candidateRequirementsJSON, columns=['item'])
-        
-        candidateRequirementsDataframe['job_posting_id'] = job_record["job_posting_id"]
-        candidateRequirementsDataframe['unique_id'] = [uuid.uuid4() for _ in range(len(candidateRequirementsDataframe))]    
-        # Reorder the columns as requested
-        candidateRequirementsDataframe = candidateRequirementsDataframe[['job_posting_id', 'unique_id', 'item']]
-
-        candidateRequirementsDao = CandidateRequirementsDao()
-        candidateRequirementsDao.insertRequirementsForJobPosting(candidateRequirementsDataframe)
-
-        #2: Job_Responsibilities
-        job_responsibilitiesJSON = languageModelResponse.get("job_responsibilities", [])
-        
-        # Create a DataFrame to hold the job responsibilities
-        job_responsibilitiesDataframe = pd.DataFrame(job_responsibilitiesJSON, columns=['item'])
-        
-        job_responsibilitiesDataframe['job_posting_id'] = job_record["job_posting_id"]
-        job_responsibilitiesDataframe['unique_id'] = [uuid.uuid4() for _ in range(len(job_responsibilitiesDataframe))]    
-        # Reorder the columns as requested
-        job_responsibilitiesDataframe = job_responsibilitiesDataframe[['job_posting_id', 'unique_id', 'item']]
-
-        jobResponsibilitiesDao = JobResponsibilitiesDao()
-        jobResponsibilitiesDao.insertJobResponsibilitiesForJobPosting(job_responsibilitiesDataframe)
-        
-        #3: Job Skills
-        job_skillsJSON = languageModelResponse.get("job_skills", [])
-        
-        # Create a DataFrame to hold the job skills
-        job_skillsDataframe = pd.DataFrame(job_skillsJSON, columns=['item'])
-        
-        job_skillsDataframe['job_posting_id'] = job_record["job_posting_id"]
-        job_skillsDataframe['unique_id'] = [uuid.uuid4() for _ in range(len(job_skillsDataframe))]    
-        # Reorder the columns as requested
-        job_skillsDataframe = job_skillsDataframe[['job_posting_id', 'unique_id', 'item']]
-
-        jobSkillsDao = JobSkillsDao()
-        jobSkillsDao.insertSkillsForJobPosting(job_skillsDataframe)  
-        
-        #4: Job_Keywords
-        jobKeyWordsJSON = languageModelResponse.get("job_keywords", [])
-        
-        # Create a DataFrame to hold the job key words
-        jobKeyWordsDataFrame = pd.DataFrame(jobKeyWordsJSON, columns=['item'])
-        
-        jobKeyWordsDataFrame['job_posting_id'] = job_record["job_posting_id"]
-        jobKeyWordsDataFrame['unique_id'] = [uuid.uuid4() for _ in range(len(jobKeyWordsDataFrame))]    
-        # Reorder the columns as requested
-        jobKeyWordsDataFrame = jobKeyWordsDataFrame[['job_posting_id', 'unique_id', 'item']]
-
-        jobKeyWordsDao = JobKeyWordsDao()
-        jobKeyWordsDao.insertJobKeyWordsForJobPosting(jobKeyWordsDataFrame)
+        # Process and insert data into corresponding DAOs
+        process_and_insert(languageModelResponse.get("job_requirements", []), CandidateRequirementsDao, 'insertRequirementsForJobPosting', job_record)
+        process_and_insert(languageModelResponse.get("job_responsibilities", []), JobResponsibilitiesDao, 'insertJobResponsibilitiesForJobPosting', job_record)
+        process_and_insert(languageModelResponse.get("job_skills", []), JobSkillsDao, 'insertSkillsForJobPosting', job_record)
+        process_and_insert(languageModelResponse.get("job_keywords", []), JobKeyWordsDao, 'insertJobKeyWordsForJobPosting', job_record)
 
         embedAndUpsertRelevantDocumentsToPinecone(job_record)
-
-        addToNomicMap(job_record)
-
-        return
-
     
     except Exception as e:
             logging.error(f"Some error occurred during processing. The error string is: {e}")
@@ -403,8 +394,6 @@ def enrichJobRecordDetails(job_record):
             failureLogger.logFailedLlmJsonResponse(job_record, languageModelResponse)
             return
     
-
-
 #This function will take in a collection of job records as rows in a Pandas DataFrame. 
 #It will iterate on each record and send to another method to apply classification to the individual record. 
 #Once all records have been classified, the method will return the collection of job records. 
@@ -416,27 +405,23 @@ def enrichEachJobAndPersistToDatabase(job_records):
         logging.info(f"No unnprocessed jobs to enrich. Exiting script.")
         return
 
-    # Iterate through each job record in the DataFrame
-    start_time = time.time() 
 
+    start_time = time.time() 
     for index, job_record in job_records.iterrows():
         job_start_time = time.time()
         try:
-            # Attempt to call the classify function for each job record
             enrichJobRecordDetails(job_record)
 
             logging.info(f"Finished calling the LLM for a single job. Job Title = {job_record['job_title']} ")
             totalRecords += 1
 
         except Exception as e:
-            # Log the exception and skip to the next job record
             logging.error(f"Error processing job record {job_record['job_title']}: {e}")
 
         finally:
             job_end_time = time.time()  # Capture end time
             duration_ms = (job_end_time - job_start_time) * 1000  # Calculate duration in milliseconds
 
-            # These logging statements will execute whether or not an exception occurred
             logging.info(f"We have categorized {totalRecords} total jobs")
             logging.info(f"There are {job_records.shape[0]} total jobs to be processed")
             logging.info(f"Last record to update took {duration_ms:.2f} milliseconds")
@@ -451,19 +436,14 @@ def main(args):
     func_name = inspect.currentframe().f_code.co_name
     logging.info(f"We have entered {func_name}")
 
-    # We will first get a record of all the jobs which have not been classified. 
     unprocessed_jobs = getUnprocessedAiClassificationJobs()
-  
-    unprocessed_jobs = unprocessed_jobs.sort_values(by='job_posting_date', ascending=False)
-
-
-    # Once we've got the list of jobs to process, 
-    # We send the dataframe to a function that will call the LLM and get more structured and robust data about the jobs. 
-    # Finally, each job is then saved to the database. 
+    # Create a new dataframe for UX related jobs
+    #ux_jobs = unprocessed_jobs[unprocessed_jobs['job_title'].str.contains('user|researcher|ux', case=False, na=False)]
+    
+    unprocessed_jobs = unprocessed_jobs.sort_values(by='job_posting_date', ascending=False).head(500)  
     enrichEachJobAndPersistToDatabase(unprocessed_jobs)
 
     return 
-
 
 if __name__ == "__main__":
     
